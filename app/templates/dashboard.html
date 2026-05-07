@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Panel general</h2>
+    <p>Resumen de solicitudes de licencias, carpetas médicas y otras licencias.</p>
+  </div>
+
+  <div class="header-actions">
+    <a class="btn-secondary" href="/admin/persons">Ver personas</a>
+    <a class="btn-primary" href="/admin/licenses/new">Nueva solicitud</a>
+  </div>
+</section>
+
+<section class="cards dashboard-cards">
+  <a href="/admin/persons" class="card card-link">
+    <span>Personas</span>
+    <strong>{{ total_persons }}</strong>
+    <small>Ver personas registradas</small>
+  </a>
+
+  <a href="/admin/licenses" class="card card-link">
+    <span>Solicitudes</span>
+    <strong>{{ total_requests }}</strong>
+    <small>Ver todas las solicitudes</small>
+  </a>
+
+  <a href="/admin/licenses?type=license" class="card card-link">
+    <span>Licencias</span>
+    <strong>{{ total_licenses }}</strong>
+    <small>Licencias comunes</small>
+  </a>
+
+  <a href="/admin/licenses?type=medical_folder" class="card card-link">
+    <span>Carpeta Médica</span>
+    <strong>{{ total_medical }}</strong>
+    <small>Carpetas médicas</small>
+  </a>
+
+  <a href="/admin/licenses?type=other_license" class="card card-link">
+    <span>Otras Licencias</span>
+    <strong>{{ total_other }}</strong>
+    <small>Licencias especiales</small>
+  </a>
+
+  <a href="/admin/licenses?status=pending" class="card card-link warning">
+    <span>Pendientes</span>
+    <strong>{{ pending_requests }}</strong>
+    <small>Solicitudes sin resolver</small>
+  </a>
+</section>
+
+<section class="panel dashboard-latest-panel">
+  <div class="panel-header">
+    <div>
+      <h3>Últimas solicitudes</h3>
+      <span class="muted">
+        {{ latest_total_items }} solicitud/es · Página {{ latest_page }} de {{ latest_total_pages }}
+      </span>
+    </div>
+
+    <a class="mini-link" href="/admin/licenses">Ver todas</a>
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Persona</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th>Desde</th>
+          <th>Hasta</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for item in latest_requests %}
+        <tr>
+          <td>
+            <strong>#{{ item.id }}</strong>
+          </td>
+
+          <td>
+            {% if item.person %}
+              {% if item.person.full_name %}
+                {{ item.person.full_name }}
+              {% else %}
+                {{ item.person.first_name }} {{ item.person.last_name }}
+              {% endif %}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+
+          <td>
+            {% if item.request_type == "license" %}
+              <span class="badge badge-blue">Licencia</span>
+            {% elif item.request_type == "medical_folder" %}
+              <span class="badge badge-purple">Carpeta médica</span>
+            {% elif item.request_type == "other_license" %}
+              <span class="badge badge-gray">Otra licencia</span>
+            {% else %}
+              <span class="badge">{{ item.request_type or "-" }}</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if item.status == "pending" %}
+              <span class="status-pill status-pending">Pendiente</span>
+            {% elif item.status == "approved" %}
+              <span class="status-pill status-approved">Aprobada</span>
+            {% elif item.status == "rejected" %}
+              <span class="status-pill status-rejected">Rechazada</span>
+            {% elif item.status == "observed" %}
+              <span class="status-pill status-observed">Observada</span>
+            {% elif item.status == "cancelled" %}
+              <span class="status-pill status-rejected">Cancelada</span>
+            {% else %}
+              <span class="status-pill">{{ item.status or "-" }}</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {{ item.start_date.strftime('%d/%m/%Y') if item.start_date else "-" }}
+          </td>
+
+          <td>
+            {% if item.end_date %}
+              {{ item.end_date.strftime('%d/%m/%Y') }}
+            {% elif item.request_type == "medical_folder" %}
+              <span class="muted">Pendiente de cierre</span>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+
+          <td>
+            <a class="mini-link" href="/admin/licenses/{{ item.id }}">Ver detalle</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="empty">Todavía no hay solicitudes cargadas.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if latest_total_pages > 1 %}
+    <div class="pagination dashboard-pagination">
+      {% if latest_page > 1 %}
+        <a class="btn-secondary" href="/admin?latest_page={{ latest_page - 1 }}">
+          Anterior
+        </a>
+      {% else %}
+        <span></span>
+      {% endif %}
+
+      <span>Página {{ latest_page }} de {{ latest_total_pages }}</span>
+
+      {% if latest_page < latest_total_pages %}
+        <a class="btn-secondary" href="/admin?latest_page={{ latest_page + 1 }}">
+          Siguiente
+        </a>
+      {% else %}
+        <span></span>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

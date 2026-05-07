@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Usuarios</h2>
+    <p>Administración de accesos al sistema RRHH Licencias.</p>
+  </div>
+
+  <div class="header-actions">
+    <a href="/admin/users/new" class="btn-primary">Nuevo usuario</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Usuarios del sistema</h3>
+    <span class="muted">{{ users|length }} usuario/s</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Usuario</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Estado</th>
+        <th>Creado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for item in users %}
+      <tr>
+        <td>#{{ item.id }}</td>
+
+        <td>
+          <strong>{{ item.full_name }}</strong>
+          {% if current_user and current_user.id == item.id %}
+            <br>
+            <span class="muted">Usuario actual</span>
+          {% endif %}
+        </td>
+
+        <td>{{ item.email }}</td>
+
+        <td>
+          <span class="badge">
+            {{ roles.get(item.role, item.role) }}
+          </span>
+        </td>
+
+        <td>
+          {% if item.is_active %}
+            <span class="status status-approved">Activo</span>
+          {% else %}
+            <span class="status status-rejected">Inactivo</span>
+          {% endif %}
+        </td>
+
+        <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M') if item.created_at else "-" }}</td>
+
+        <td>
+          <div class="table-actions">
+            <a class="mini-link" href="/admin/users/{{ item.id }}/edit">Editar</a>
+            <a class="mini-link" href="/admin/users/{{ item.id }}/password">Contraseña</a>
+
+            {% if current_user and current_user.id != item.id %}
+              <form method="post" action="/admin/users/{{ item.id }}/toggle" class="inline-mini-form">
+                <button type="submit" class="mini-button">
+                  {% if item.is_active %}
+                    Desactivar
+                  {% else %}
+                    Activar
+                  {% endif %}
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="empty">
+          No hay usuarios cargados.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

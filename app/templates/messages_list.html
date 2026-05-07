@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header wa-page-header">
+  <div>
+    <h2>Mensajes</h2>
+    <p>Conversaciones recibidas, solicitudes y estado del asistente.</p>
+  </div>
+</section>
+
+<section class="wa-layout">
+  <aside class="wa-sidebar">
+    <div class="wa-sidebar-header">
+      <h3>Conversaciones</h3>
+      <span>{{ conversations|length }} conversación/es</span>
+    </div>
+
+    <div class="wa-conversation-list">
+      {% for item in conversations %}
+        <a
+          href="/admin/messages?conversation_id={{ item.id }}"
+          class="wa-conversation {% if selected_conversation and selected_conversation.id == item.id %}active{% endif %} {% if item.unread_count and item.unread_count > 0 %}unread{% endif %}"
+        >
+          <div class="wa-avatar">
+            {% if item.person %}
+              {{ item.person.first_name[:1] }}{{ item.person.last_name[:1] if item.person.last_name else '' }}
+            {% else %}
+              ??
+            {% endif %}
+          </div>
+
+          <div class="wa-conversation-content">
+            <div class="wa-conversation-top">
+              <strong>
+                {% if item.person %}
+                  {{ item.person.first_name }} {{ item.person.last_name }}
+                {% else %}
+                  Sin persona
+                {% endif %}
+              </strong>
+
+              <span>
+                {% if item.last_message_at %}
+                  {{ item.last_message_at.strftime('%d/%m %H:%M') }}
+                {% elif item.created_at %}
+                  {{ item.created_at.strftime('%d/%m %H:%M') }}
+                {% endif %}
+              </span>
+            </div>
+
+            <div class="wa-conversation-sub">
+              {{ item.channel }} · {{ item.external_contact }}
+            </div>
+
+            <div class="wa-conversation-preview-row">
+              <div class="wa-conversation-preview">
+                {% if item.last_message_preview %}
+                  {{ item.last_message_preview[:65] }}{% if item.last_message_preview|length > 65 %}...{% endif %}
+                {% else %}
+                  Sin mensajes
+                {% endif %}
+              </div>
+
+              {% if item.unread_count and item.unread_count > 0 %}
+                <span class="wa-unread-badge">
+                  {{ item.unread_count }}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+      {% else %}
+        <div class="wa-empty">
+          No hay conversaciones registradas.
+        </div>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <main class="wa-main">
+    {% if selected_conversation %}
+      <header class="wa-chat-header">
+        <div class="wa-header-left">
+          <div class="wa-avatar big">
+            {% if selected_conversation.person %}
+              {{ selected_conversation.person.first_name[:1] }}{{ selected_conversation.person.last_name[:1] if selected_conversation.person.last_name else '' }}
+            {% else %}
+              ??
+            {% endif %}
+          </div>
+
+          <div>
+            <h3>
+              {% if selected_conversation.person %}
+                {{ selected_conversation.person.first_name }} {{ selected_conversation.person.last_name }}
+              {% else %}
+                Sin persona vinculada
+              {% endif %}
+            </h3>
+
+            <p>
+              {{ selected_conversation.channel }} · {{ selected_conversation.external_contact }}
+              {% if selected_conversation.person %}
+                · DNI {{ selected_conversation.person.dni or "-" }}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="wa-header-actions">
+          {% if selected_conversation.assistant_paused %}
+            <span class="wa-status paused">Asistente pausado</span>
+
+            <form method="post" action="/admin/messages/{{ selected_conversation.id }}/resume">
+              <button type="submit" class="wa-btn primary">Reanudar</button>
+            </form>
+          {% else %}
+            <span class="wa-status active">Asistente activo</span>
+
+            <form method="post" action="/admin/messages/{{ selected_conversation.id }}/pause">
+              <input type="hidden" name="pause_reason" value="Pausado desde panel de mensajes">
+              <button type="submit" class="wa-btn danger">Pausar</button>
+            </form>
+          {% endif %}
+
+          {% if selected_conversation.person and can_manage_persons %}
+            <a href="/admin/persons/{{ selected_conversation.person.id }}" class="wa-btn secondary">
+              Editar persona
+            </a>
+          {% endif %}
+        </div>
+      </header>
+
+      <section class="wa-person-requests-card">
+        <div class="wa-section-head">
+          <div>
+            <h3>Solicitudes de la persona</h3>
+            <p>
+              {{ person_requests|length }} solicitud/es vinculada/s.
+              Al cambiar el estado, se notificará por WhatsApp.
+            </p>
+          </div>
+
+          {% if can_manage_licenses %}
+            <a class="wa-btn secondary" href="/admin/licenses/new">
+              Nueva solicitud
+            </a>
+          {% endif %}
+        </div>
+
+        <div class="wa-requests-list">
+          {% for req in person_requests %}
+            <article class="wa-request-item">
+              <div class="wa-request-main">
+                <div class="wa-request-title">
+                  <a href="/admin/licenses/{{ req.id }}">
+                    Solicitud #{{ req.id }}
+                  </a>
+
+                  <span class="badge">
+                    {{ request_type_labels.get(req.request_type, req.request_type) }}
+                  </span>
+
+                  <span class="status status-{{ req.status }}">
+                    {{ status_labels.get(req.status, req.status) }}
+                  </span>
+                </div>
+
+                <div class="wa-request-meta">
+                  <span>Desde: <strong>{{ req.start_date }}</strong></span>
+                  <span>
+                    Hasta:
+                    <strong>
+                      {% if display_end_date is defined %}
+                        {{ display_end_date(req) }}
+                      {% elif req.end_date %}
+                        {{ req.end_date }}
+                      {% else %}
+                        Pendiente de cierre
+                      {% endif %}
+                    </strong>
+                  </span>
+                  <span>Creada: <strong>{{ req.created_at.strftime('%d/%m/%Y %H:%M') if req.created_at else '-' }}</strong></span>
+                </div>
+
+                <div class="wa-request-reason">
+                  {{ req.reason or "Sin motivo cargado." }}
+
+                  {% if req.request_type == "medical_folder" %}
+                    <div class="medical-folder-extra compact">
+                      {% if req.medical_folder_for == "family" %}
+                        <strong>Por:</strong> Familiar enfermo ·
+                        <strong>DNI familiar:</strong> {{ req.family_member_dni or "-" }} ·
+                        <strong>Familiar:</strong> {{ req.family_member_full_name or "-" }} ·
+                        <strong>Parentesco:</strong> {{ req.family_relationship or "-" }}
+                      {% elif req.medical_folder_for == "agent" %}
+                        <strong>Por:</strong> Agente
+                      {% else %}
+                        <strong>Por:</strong> Sin definir
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="wa-request-actions">
+                {% if can_manage_licenses %}
+                  <a
+                    href="/admin/licenses/{{ req.id }}/edit?return_to=/admin/messages?conversation_id={{ selected_conversation.id }}"
+                    class="wa-mini-link"
+                  >
+                    Editar
+                  </a>
+                {% endif %}
+
+                {% if can_change_license_status %}
+                  <form method="post" action="/admin/messages/{{ selected_conversation.id }}/requests/{{ req.id }}/status">
+                    <input type="hidden" name="status" value="approved">
+                    <button type="submit" class="wa-mini-btn success">Aprobar</button>
+                  </form>
+
+                  <form method="post" action="/admin/messages/{{ selected_conversation.id }}/requests/{{ req.id }}/status">
+                    <input type="hidden" name="status" value="observed">
+                    <button type="submit" class="wa-mini-btn warning">Observar</button>
+                  </form>
+
+                  <form method="post" action="/admin/messages/{{ selected_conversation.id }}/requests/{{ req.id }}/status">
+                    <input type="hidden" name="status" value="rejected">
+                    <button type="submit" class="wa-mini-btn danger">Rechazar</button>
+                  </form>
+                {% endif %}
+              </div>
+            </article>
+          {% else %}
+            <div class="wa-empty">
+              Esta persona todavía no tiene solicitudes registradas.
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="wa-chat-card">
+        <div class="wa-chat-title">Mensajes</div>
+
+        <div class="wa-thread" id="wa-thread">
+          {% for msg in messages %}
+            <div class="wa-msg-row {% if msg.sender_type == 'system' %}center{% elif msg.sender_type in ['assistant', 'human'] %}right{% else %}left{% endif %}">
+              <div class="wa-msg {{ msg.sender_type }}">
+                <div class="wa-msg-meta">
+                  <span>{{ msg.sender_type }}</span>
+                  <small>{{ msg.created_at.strftime('%d/%m/%Y %H:%M') if msg.created_at else '' }}</small>
+                </div>
+
+                <div class="wa-msg-text">
+                  {{ msg.content }}
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="wa-empty">
+              No hay mensajes cargados.
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="wa-reply-card">
+        <form method="post" action="/admin/messages/{{ selected_conversation.id }}/reply" class="wa-reply-form">
+          <textarea
+            name="content"
+            placeholder="Escribí una respuesta humana..."
+            required
+          ></textarea>
+
+          <div class="wa-reply-actions">
+            <button type="submit" class="wa-btn primary">Enviar respuesta humana</button>
+
+            {% if selected_conversation.assistant_paused %}
+              <span>El asistente está pausado.</span>
+            {% else %}
+              <span>Al responder, el asistente quedará pausado.</span>
+            {% endif %}
+          </div>
+        </form>
+      </section>
+    {% else %}
+      <div class="wa-empty big">
+        No hay conversaciones para mostrar.
+      </div>
+    {% endif %}
+  </main>
+</section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const thread = document.getElementById("wa-thread");
+    if (thread) {
+      thread.scrollTop = thread.scrollHeight;
+    }
+  });
+</script>
+
+<script>
+(function () {
+    const REFRESH_MS = 6000;
+
+    function shouldSkipRefresh() {
+        const textarea = document.querySelector('textarea[name="content"]')
+            || document.querySelector('textarea[name="human_message"]')
+            || document.querySelector('textarea');
+
+        if (!textarea) return false;
+
+        const isFocused = document.activeElement === textarea;
+        const hasText = textarea.value && textarea.value.trim().length > 0;
+
+        return isFocused || hasText;
+    }
+
+    setInterval(() => {
+        if (document.hidden) return;
+        if (shouldSkipRefresh()) return;
+
+        window.location.href = window.location.pathname + window.location.search;
+    }, REFRESH_MS);
+})();
+</script>
+{% endblock %}

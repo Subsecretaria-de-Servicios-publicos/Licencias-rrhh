@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Personas</h2>
+    <p>Listado de agentes/personas registradas en el sistema.</p>
+  </div>
+
+  <div class="header-actions">
+    <a class="btn-secondary" href="/admin">Volver al panel</a>
+  </div>
+</section>
+
+<form method="get" action="/admin/persons" class="search-card">
+  <div class="search-row">
+    <input
+      type="text"
+      name="q"
+      placeholder="Buscar por DNI, nombre, apellido o teléfono..."
+      value="{{ q or '' }}"
+    >
+
+    <button type="submit" class="btn-primary">Buscar</button>
+
+    {% if q %}
+      <a href="/admin/persons" class="btn-secondary">Limpiar</a>
+    {% endif %}
+  </div>
+</form>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h3>Personas registradas</h3>
+      <span class="muted">
+        {% if persons %}
+          {{ persons|length }} resultado/s
+        {% else %}
+          Sin resultados
+        {% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre completo</th>
+          <th>DNI</th>
+          <th>Teléfono</th>
+          <th>Solicitudes</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for person in persons %}
+        <tr>
+          <td>
+            <strong>#{{ person.id }}</strong>
+          </td>
+
+          <td>
+            <div class="person-cell">
+              <div class="avatar-sm">
+                {{ (person.first_name[:1] if person.first_name else "P") }}{{ (person.last_name[:1] if person.last_name else "") }}
+              </div>
+
+              <div>
+                <strong>
+                  {% if person.full_name %}
+                    {{ person.full_name }}
+                  {% else %}
+                    {{ person.first_name }} {{ person.last_name }}
+                  {% endif %}
+                </strong>
+
+                <span class="muted">
+                  Persona registrada
+                </span>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            {% if person.dni %}
+              <span class="info-pill">{{ person.dni }}</span>
+            {% else %}
+              <span class="muted">Sin DNI</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if person.phone %}
+              <span class="info-pill info-pill-phone">{{ person.phone }}</span>
+            {% else %}
+              <span class="muted">Sin teléfono</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if person.license_requests %}
+              <span class="badge">{{ person.license_requests|length }}</span>
+            {% else %}
+              <span class="muted">0</span>
+            {% endif %}
+          </td>
+
+          <td class="text-right">
+            <div class="table-actions">
+              <a class="mini-link" href="/admin/licenses?person_id={{ person.id }}">Ver solicitudes</a>
+              <a class="mini-link" href="/admin/persons/{{ person.id }}/edit">Editar</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty">
+            No se encontraron personas.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

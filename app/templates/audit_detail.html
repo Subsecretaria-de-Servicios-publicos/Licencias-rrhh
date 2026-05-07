@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Detalle de auditoría #{{ item.id }}</h2>
+    <p>Información completa del evento registrado.</p>
+  </div>
+
+  <div class="header-actions">
+    <a class="btn-secondary" href="/admin/audit">Volver</a>
+  </div>
+</section>
+
+<section class="audit-detail-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Evento</h3>
+    </div>
+
+    <div class="detail-list">
+      <div>
+        <span>Fecha</span>
+        <strong>{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Acción</span>
+        <strong>{{ item.action_label }}</strong>
+      </div>
+
+      <div>
+        <span>Entidad</span>
+        <strong>{{ item.entity_type_label }}</strong>
+      </div>
+
+      <div>
+        <span>ID Entidad</span>
+        <strong>
+          {% if item.entity_id %}
+            #{{ item.entity_id }}
+          {% else %}
+            -
+          {% endif %}
+        </strong>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Usuario</h3>
+    </div>
+
+    <div class="detail-list">
+      <div>
+        <span>ID Usuario</span>
+        <strong>{{ item.user_id or "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Email</span>
+        <strong>{{ item.user_email or "Sistema/API" }}</strong>
+      </div>
+
+      <div>
+        <span>Rol</span>
+        <strong>{{ item.user_role or "-" }}</strong>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Detalle completo</h3>
+  </div>
+
+  <pre class="audit-detail-pre">{{ item.description_pretty or "-" }}</pre>
+</section>
+
+<style>
+  .audit-description-short {
+    color: #334155;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .audit-detail-pre {
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 16px;
+    padding: 18px 20px;
+    font-size: 14px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+  }
+</style>
+{% endblock %}

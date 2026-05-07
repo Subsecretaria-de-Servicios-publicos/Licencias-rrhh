@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>{{ title }}</h2>
+    <p>Listado de solicitudes registradas con datos de la persona.</p>
+  </div>
+
+  <div class="header-actions">
+    <a class="btn-primary" href="/admin/licenses/new">Nueva solicitud</a>
+
+    <a
+      class="btn-secondary"
+      href="/admin/licenses/export.csv?{% if selected_type %}type={{ selected_type }}&{% endif %}{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_person_id %}person_id={{ selected_person_id }}&{% endif %}{% if q %}q={{ q }}&{% endif %}"
+    >
+      Exportar CSV
+    </a>
+  </div>
+</section>
+
+{% if selected_person %}
+<section class="filter-notice">
+  <div>
+    <strong>Filtro por persona activo:</strong>
+    {{ selected_person.first_name }} {{ selected_person.last_name }}
+    — DNI {{ selected_person.dni }}
+  </div>
+
+  <a class="mini-link" href="/admin/licenses">Ver todas las solicitudes</a>
+</section>
+{% endif %}
+
+<form method="get" action="/admin/licenses" class="search-bar">
+  {% if selected_type %}
+    <input type="hidden" name="type" value="{{ selected_type }}">
+  {% endif %}
+
+  {% if selected_status %}
+    <input type="hidden" name="status" value="{{ selected_status }}">
+  {% endif %}
+
+  {% if selected_person_id %}
+    <input type="hidden" name="person_id" value="{{ selected_person_id }}">
+  {% endif %}
+
+  <input
+    type="text"
+    name="q"
+    placeholder="Buscar por DNI, nombre, teléfono o área..."
+    value="{{ q }}"
+  >
+
+  <button type="submit" class="btn-primary">Buscar</button>
+
+  {% if q %}
+    <a
+      class="btn-secondary"
+      href="/admin/licenses?{% if selected_type %}type={{ selected_type }}&{% endif %}{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_person_id %}person_id={{ selected_person_id }}&{% endif %}"
+    >
+      Limpiar
+    </a>
+  {% endif %}
+</form>
+
+<section class="filters">
+  <a
+    href="/admin/licenses?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_person_id %}person_id={{ selected_person_id }}&{% endif %}{% if q %}q={{ q }}&{% endif %}"
+    class="{% if not selected_type %}active{% endif %}"
+  >
+    Todas
+  </a>
+
+  <a
+    href="/admin/licenses?type=license{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_person_id %}&person_id={{ selected_person_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    class="{% if selected_type == 'license' %}active{% endif %}"
+  >
+    Licencias
+  </a>
+
+  <a
+    href="/admin/licenses?type=medical_folder{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_person_id %}&person_id={{ selected_person_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    class="{% if selected_type == 'medical_folder' %}active{% endif %}"
+  >
+    Carpeta Médica
+  </a>
+
+  <a
+    href="/admin/licenses?type=other_license{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_person_id %}&person_id={{ selected_person_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    class="{% if selected_type == 'other_license' %}active{% endif %}"
+  >
+    Otras Licencias
+  </a>
+</section>
+
+<section class="filters secondary">
+  <a
+    href="/admin/licenses?{% if selected_type %}type={{ selected_type }}&{% endif %}{% if selected_person_id %}person_id={{ selected_person_id }}&{% endif %}{% if q %}q={{ q }}&{% endif %}"
+    class="{% if not selected_status %}active{% endif %}"
+  >
+    Todos los estados
+  </a>
+
+  {% for status_key, status_name in status_labels.items() %}
+    <a
+      href="/admin/licenses?{% if selected_type %}type={{ selected_type }}&{% endif %}status={{ status_key }}{% if selected_person_id %}&person_id={{ selected_person_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+      class="{% if selected_status == status_key %}active{% endif %}"
+    >
+      {{ status_name }}
+    </a>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h3>Solicitudes</h3>
+      <span class="muted">
+        {{ total_items }} registro/s · Página {{ page }} de {{ total_pages }}
+      </span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Persona</th>
+          <th>DNI</th>
+          <th>Teléfono</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th>Desde</th>
+          <th>Hasta</th>
+          <th>Motivo</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for item in requests %}
+        <tr>
+          <td>
+            <a href="/admin/licenses/{{ item.id }}" class="table-link">#{{ item.id }}</a>
+          </td>
+
+          <td>
+            {% if item.person %}
+              <strong>{{ item.person.first_name }} {{ item.person.last_name }}</strong>
+              <br>
+              <span class="muted">{{ item.person.department or "Sin área" }}</span>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+
+          <td>{{ item.person.dni if item.person else "-" }}</td>
+
+          <td>{{ item.person.phone if item.person and item.person.phone else "-" }}</td>
+
+          <td>
+            <span class="badge">
+              {{ request_type_labels.get(item.request_type, item.request_type) }}
+            </span>
+          </td>
+
+          <td>
+            <span class="status status-{{ item.status }}">
+              {{ status_labels.get(item.status, item.status) }}
+            </span>
+          </td>
+
+          <td>
+            {{ item.start_date.strftime('%d/%m/%Y') if item.start_date else "-" }}
+          </td>
+
+          <td>
+            {% if display_end_date is defined %}
+              {{ display_end_date(item) }}
+            {% elif item.end_date %}
+              {{ item.end_date.strftime('%d/%m/%Y') }}
+            {% elif item.request_type == "medical_folder" %}
+              Pendiente de cierre
+            {% else %}
+              -
+            {% endif %}
+          </td>
+
+          <td>
+            <div>
+              {{ item.reason or "-" }}
+            </div>
+
+            {% if item.request_type == "medical_folder" %}
+              <div class="medical-folder-extra">
+                {% if item.medical_folder_for == "family" %}
+                  <strong>Por:</strong> Familiar enfermo<br>
+                  <strong>DNI familiar:</strong> {{ item.family_member_dni or "-" }}<br>
+                  <strong>Familiar:</strong> {{ item.family_member_full_name or "-" }}<br>
+                  <strong>Parentesco:</strong> {{ item.family_relationship or "-" }}
+                {% elif item.medical_folder_for == "agent" %}
+                  <strong>Por:</strong> Agente
+                {% else %}
+                  <strong>Por:</strong> Sin definir
+                {% endif %}
+              </div>
+            {% endif %}
+          </td>
+
+          <td>
+            <div class="table-actions">
+              <a class="mini-link" href="/admin/licenses/{{ item.id }}">Ver</a>
+              <a class="mini-link" href="/admin/licenses/{{ item.id }}/edit">Editar</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="empty">
+            No hay solicitudes registradas.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if total_pages > 1 %}
+<section class="pagination">
+  {% if page > 1 %}
+    <a
+      class="btn-secondary"
+      href="/admin/licenses?page={{ page - 1 }}{% if selected_type %}&type={{ selected_type }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_person_id %}&person_id={{ selected_person_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    >
+      Anterior
+    </a>
+  {% endif %}
+
+  <span>Página {{ page }} de {{ total_pages }}</span>
+
+  {% if page < total_pages %}
+    <a
+      class="btn-secondary"
+      href="/admin/licenses?page={{ page + 1 }}{% if selected_type %}&type={{ selected_type }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_person_id %}&person_id={{ selected_person_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    >
+      Siguiente
+    </a>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

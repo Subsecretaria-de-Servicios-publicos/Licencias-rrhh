@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Editar solicitud #{{ item.id }}</h2>
+    <p>Modificar datos de licencia, estado y persona vinculada.</p>
+  </div>
+
+  <div class="header-actions">
+    {% if return_to %}
+      <a class="btn-secondary" href="{{ return_to }}">Volver</a>
+    {% else %}
+      <a class="btn-secondary" href="/admin/licenses/{{ item.id }}">Volver</a>
+    {% endif %}
+  </div>
+</section>
+
+<form method="post" action="/admin/licenses/{{ item.id }}/edit" class="license-edit-layout">
+  <input type="hidden" name="return_to" value="{{ return_to }}">
+
+  <section class="panel">
+    <div class="panel-header">
+      <h3>Datos de la solicitud</h3>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Tipo de solicitud
+        <select name="request_type" required>
+          {% for key, label in request_type_labels.items() %}
+            <option value="{{ key }}" {% if item.request_type == key %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
+        Estado
+        <select name="status" required>
+          {% for key, label in status_labels.items() %}
+            <option value="{{ key }}" {% if item.status == key %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+        <small>
+          Si modificás el estado, se notificará automáticamente por WhatsApp a la persona vinculada.
+        </small>
+      </label>
+
+      <label>
+        Desde
+        <input type="date" name="start_date" value="{{ item.start_date }}" required>
+      </label>
+
+      <label>
+        Hasta
+        <input type="date" name="end_date" value="{{ item.end_date or '' }}">
+        <small>En carpeta médica puede quedar vacío hasta recibir el comprobante o cierre.</small>
+      </label>
+    </div>
+
+    <label>
+      Motivo
+      <textarea name="reason" rows="4">{{ item.reason or "" }}</textarea>
+    </label>
+
+    <label>
+      Observaciones administrativas
+      <textarea name="admin_notes" rows="4">{{ item.admin_notes or "" }}</textarea>
+    </label>
+
+    <section class="form-section medical-folder-edit">
+      <h3>Datos de carpeta médica</h3>
+      <p class="muted">
+        Completar solo si el tipo de solicitud es Carpeta Médica.
+      </p>
+
+      <label>
+        Carpeta médica por
+        <select name="medical_folder_for">
+          <option value="" {% if not item.medical_folder_for %}selected{% endif %}>
+            Sin definir
+          </option>
+          <option value="agent" {% if item.medical_folder_for == "agent" %}selected{% endif %}>
+            Agente
+          </option>
+          <option value="family" {% if item.medical_folder_for == "family" %}selected{% endif %}>
+            Familiar enfermo
+          </option>
+        </select>
+      </label>
+
+      <label>
+        DNI del familiar
+        <input
+          type="text"
+          name="family_member_dni"
+          value="{{ item.family_member_dni or '' }}"
+          placeholder="Ej: 28777111"
+        >
+      </label>
+
+      <label>
+        Nombre completo del familiar
+        <input
+          type="text"
+          name="family_member_full_name"
+          value="{{ item.family_member_full_name or '' }}"
+          placeholder="Ej: María Gómez"
+        >
+      </label>
+
+      <label>
+        Parentesco
+        <input
+          type="text"
+          name="family_relationship"
+          value="{{ item.family_relationship or '' }}"
+          placeholder="Ej: madre, padre, hijo, cónyuge"
+        >
+      </label>
+    </section>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h3>Persona vinculada</h3>
+    </div>
+
+    <div class="person-summary compact-summary">
+      <div class="person-avatar">
+        {{ item.person.first_name[:1] }}{{ item.person.last_name[:1] if item.person.last_name else "" }}
+      </div>
+
+      <div>
+        <h3>{{ item.person.first_name }} {{ item.person.last_name }}</h3>
+        <p>DNI {{ item.person.dni }}</p>
+      </div>
+    </div>
+
+    <div class="form-grid mt-24">
+      <label>
+        Nombre
+        <input type="text" name="first_name" value="{{ item.person.first_name }}" required>
+      </label>
+
+      <label>
+        Apellido
+        <input type="text" name="last_name" value="{{ item.person.last_name }}" required>
+      </label>
+
+      <label>
+        DNI
+        <input type="text" value="{{ item.person.dni }}" disabled>
+        <small>El DNI no se modifica desde esta pantalla para evitar duplicados.</small>
+      </label>
+
+      <label>
+        Teléfono
+        <input type="text" name="phone" value="{{ item.person.phone or '' }}">
+      </label>
+
+      <label>
+        Email
+        <input type="email" name="email" value="{{ item.person.email or '' }}">
+      </label>
+
+      <label>
+        Área / Dependencia
+        <input type="text" name="department" value="{{ item.person.department or '' }}">
+      </label>
+
+      <label>
+        Legajo
+        <input type="text" name="employee_number" value="{{ item.person.employee_number or '' }}">
+      </label>
+    </div>
+  </section>
+
+  <section class="panel full-width">
+    <div class="edit-actions">
+      <button type="submit" class="btn-primary">Guardar cambios</button>
+
+      {% if return_to %}
+        <a href="{{ return_to }}" class="btn-secondary">Cancelar</a>
+      {% else %}
+        <a href="/admin/licenses/{{ item.id }}" class="btn-secondary">Cancelar</a>
+      {% endif %}
+    </div>
+  </section>
+</form>
+{% endblock %}

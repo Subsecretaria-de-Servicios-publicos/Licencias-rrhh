@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    {% if item %}
+      <h2>Editar usuario</h2>
+      <p>Modificar datos de acceso y rol del usuario.</p>
+    {% else %}
+      <h2>Nuevo usuario</h2>
+      <p>Crear un nuevo acceso al sistema.</p>
+    {% endif %}
+  </div>
+
+  <div class="header-actions">
+    <a href="/admin/users" class="btn-secondary">Volver</a>
+  </div>
+</section>
+
+{% if error %}
+  <section class="alert-error">
+    {{ error }}
+  </section>
+{% endif %}
+
+<form
+  method="post"
+  action="{% if item %}/admin/users/{{ item.id }}/edit{% else %}/admin/users/new{% endif %}"
+  class="user-form-layout"
+>
+  <section class="panel">
+    <div class="panel-header">
+      <h3>Datos del usuario</h3>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Nombre completo
+        <input
+          type="text"
+          name="full_name"
+          value="{{ item.full_name if item else '' }}"
+          required
+        >
+      </label>
+
+      <label>
+        Email
+        <input
+          type="email"
+          name="email"
+          value="{{ item.email if item else '' }}"
+          required
+        >
+      </label>
+
+      <label>
+        Rol
+        <select name="role" required>
+          {% for key, label in roles.items() %}
+            <option value="{{ key }}" {% if item and item.role == key %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      {% if not item %}
+        <label>
+          Contraseña inicial
+          <input
+            type="password"
+            name="password"
+            minlength="8"
+            required
+          >
+          <small>Mínimo 8 caracteres.</small>
+        </label>
+      {% endif %}
+    </div>
+
+    <div class="assistant-toggle-card">
+      <div>
+        <strong>Usuario activo</strong>
+        <p>
+          Si está inactivo, no podrá iniciar sesión en el sistema.
+        </p>
+      </div>
+
+      <label class="switch-row">
+        <input
+          type="checkbox"
+          name="is_active"
+          value="true"
+          {% if not item or item.is_active %}checked{% endif %}
+          {% if current_user and item and current_user.id == item.id %}disabled{% endif %}
+        >
+        <span>Activo</span>
+      </label>
+    </div>
+
+    {% if current_user and item and current_user.id == item.id %}
+      <p class="muted mt-12">
+        No podés desactivar tu propio usuario.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h3>Permisos por rol</h3>
+    </div>
+
+    <div class="role-help">
+      <article>
+        <strong>ADMIN</strong>
+        <p>Acceso completo. Puede administrar usuarios, licencias, personas y mensajes.</p>
+      </article>
+
+      <article>
+        <strong>RRHH</strong>
+        <p>Puede gestionar licencias, personas y conversaciones. No administra usuarios.</p>
+      </article>
+
+      <article>
+        <strong>OPERADOR</strong>
+        <p>Puede atender mensajes y pausar el asistente. Ideal para atención diaria.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel full-width">
+    <div class="edit-actions">
+      <button type="submit" class="btn-primary">
+        {% if item %}
+          Guardar cambios
+        {% else %}
+          Crear usuario
+        {% endif %}
+      </button>
+
+      <a href="/admin/users" class="btn-secondary">Cancelar</a>
+    </div>
+  </section>
+</form>
+{% endblock %}

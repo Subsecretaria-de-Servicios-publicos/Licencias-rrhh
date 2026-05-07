@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Conversación #{{ conversation.id }}</h2>
+    <p>Control de mensajes y pausa del asistente.</p>
+  </div>
+
+  <a class="btn-secondary" href="/admin/messages">Volver</a>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Datos de conversación</h3>
+    </div>
+
+    <div class="detail-list">
+      <div><span>Canal</span><strong>{{ conversation.channel }}</strong></div>
+      <div><span>Contacto externo</span><strong>{{ conversation.external_contact or "-" }}</strong></div>
+
+      <div>
+        <span>Estado asistente</span>
+        <strong>
+          {% if conversation.assistant_paused %}
+            <span class="status status-rejected">Pausado</span>
+          {% else %}
+            <span class="status status-approved">Activo</span>
+          {% endif %}
+        </strong>
+      </div>
+
+      <div><span>Motivo pausa</span><strong>{{ conversation.pause_reason or "-" }}</strong></div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Persona vinculada</h3>
+    </div>
+
+    {% if conversation.person %}
+      <div class="detail-list">
+        <div><span>Nombre</span><strong>{{ conversation.person.first_name }} {{ conversation.person.last_name }}</strong></div>
+        <div><span>DNI</span><strong>{{ conversation.person.dni }}</strong></div>
+        <div><span>Teléfono</span><strong>{{ conversation.person.phone or "-" }}</strong></div>
+        <div><span>Email</span><strong>{{ conversation.person.email or "-" }}</strong></div>
+        <div><span>Área</span><strong>{{ conversation.person.department or "-" }}</strong></div>
+      </div>
+    {% else %}
+      <p class="empty">Conversación sin persona vinculada.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="panel mt-24">
+  <div class="panel-header">
+    <h3>Control del asistente</h3>
+  </div>
+
+  {% if conversation.assistant_paused %}
+    <form method="post" action="/admin/messages/{{ conversation.id }}/resume" class="inline-form">
+      <button type="submit" class="btn-primary">Reanudar asistente</button>
+    </form>
+  {% else %}
+    <form method="post" action="/admin/messages/{{ conversation.id }}/pause" class="status-form">
+      <label>
+        Motivo de pausa
+        <input type="text" name="pause_reason" placeholder="Ej: requiere atención humana">
+      </label>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-danger">Pausar asistente</button>
+      </div>
+    </form>
+  {% endif %}
+</section>
+
+<section class="panel mt-24">
+  <div class="panel-header">
+    <h3>Mensajes</h3>
+  </div>
+
+  <div class="chat-box">
+    {% for msg in messages %}
+      <div class="chat-message chat-{{ msg.sender_type }}">
+        <div class="chat-meta">
+          <strong>{{ msg.sender_type }}</strong>
+          <span>{{ msg.created_at }}</span>
+        </div>
+        <p>{{ msg.content }}</p>
+      </div>
+    {% else %}
+      <p class="empty">Todavía no hay mensajes en esta conversación.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel mt-24">
+  <div class="panel-header">
+    <h3>Responder como humano</h3>
+  </div>
+
+  <form method="post" action="/admin/messages/{{ conversation.id }}/reply" class="status-form">
+    <label>
+      Mensaje
+      <textarea name="content" rows="4" required></textarea>
+    </label>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Enviar respuesta humana</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

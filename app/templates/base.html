@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>RRHH Licencias</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">RR</div>
+        <div>
+          <h1>RRHH</h1>
+          <p>Licencias</p>
+        </div>
+      </div>
+
+    <nav class="nav">
+        <a href="/admin">Panel</a>
+        <a href="/admin/persons">Personas</a>
+        <a href="/admin/licenses?type=license">Licencias</a>
+        <a href="/admin/licenses?type=medical_folder">Carpeta Médica</a>
+        <a href="/admin/licenses?type=other_license">Otras Licencias</a>
+        <a href="/admin/messages">Mensajes</a>
+
+        {% if current_user and current_user.role == "ADMIN" %}
+            <a href="/admin/users">Usuarios</a>
+        {% endif %}
+        {% if can_manage_users %}
+            <a href="/admin/audit">Auditoría</a>
+        {% endif %}
+    </nav>
+    <div class="sidebar-user">
+        {% if current_user %}
+            <div>
+            <strong>{{ current_user.full_name }}</strong>
+            <span>{{ current_user.role }}</span>
+            </div>
+
+            <form method="post" action="/logout">
+            <button type="submit">Salir</button>
+            </form>
+        {% endif %}
+    </div>
+    </aside>
+
+    <main class="content">
+        <div class="content-inner">
+            {% block content %}{% endblock %}
+        </div>
+
+        <footer class="system-footer">
+            Secretaría de Modernización - Subsecretaría de Servicios Públicos - Ministerio de Economía
+        </footer>
+    </main>
+  </div>
+</body>
+</html>

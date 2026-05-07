@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Solicitud #{{ item.id }}</h2>
+    <p>Detalle completo de la solicitud.</p>
+  </div>
+
+  <div class="header-actions">
+    <a class="btn-primary" href="/admin/licenses/{{ item.id }}/edit">Editar solicitud</a>
+    <a class="btn-secondary" href="/admin/licenses">Volver</a>
+  </div>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Datos de la persona</h3>
+    </div>
+
+    <div class="detail-list">
+      <div>
+        <span>Nombre completo</span>
+        <strong>{{ item.person.first_name }} {{ item.person.last_name }}</strong>
+      </div>
+
+      <div>
+        <span>DNI</span>
+        <strong>{{ item.person.dni }}</strong>
+      </div>
+
+      <div>
+        <span>Teléfono</span>
+        <strong>{{ item.person.phone or "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Email</span>
+        <strong>{{ item.person.email or "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Área / Dependencia</span>
+        <strong>{{ item.person.department or "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Legajo</span>
+        <strong>{{ item.person.employee_number or "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Asistente</span>
+        <strong>
+          {% if item.person.assistant_enabled %}
+            Activo
+          {% else %}
+            En pausa
+          {% endif %}
+        </strong>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Datos de la solicitud</h3>
+    </div>
+
+    <div class="detail-list">
+      <div>
+        <span>Tipo</span>
+        <strong>{{ request_type_labels.get(item.request_type, item.request_type) }}</strong>
+      </div>
+
+      <div>
+        <span>Estado</span>
+        <strong>
+          <span class="status status-{{ item.status }}">
+            {{ status_labels.get(item.status, item.status) }}
+          </span>
+        </strong>
+      </div>
+
+      <div>
+        <span>Desde</span>
+        <strong>{{ item.start_date }}</strong>
+      </div>
+
+      <div>
+        <span>Hasta</span>
+        <strong>
+          {% if display_end_date is defined %}
+            {{ display_end_date(item) }}
+          {% elif item.end_date %}
+            {{ item.end_date }}
+          {% else %}
+            Pendiente de cierre
+          {% endif %}
+        </strong>
+      </div>
+
+      <div>
+        <span>Motivo</span>
+        <strong>{{ item.reason or "-" }}</strong>
+      </div>
+
+      <div>
+        <span>Observaciones</span>
+        <strong>{{ item.admin_notes or "-" }}</strong>
+      </div>
+    </div>
+  </article>
+</section>
+
+{% if item.request_type == "medical_folder" %}
+<section class="panel mt-16">
+  <div class="panel-header">
+    <div>
+      <h3>Datos de carpeta médica</h3>
+      <span class="muted">Información específica del trámite.</span>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="detail-item">
+      <span>Tipo de carpeta</span>
+      <strong>
+        {% if item.medical_folder_for == "family" %}
+          Familiar enfermo
+        {% elif item.medical_folder_for == "agent" %}
+          Agente
+        {% else %}
+          Sin definir
+        {% endif %}
+      </strong>
+    </div>
+
+    {% if item.medical_folder_for == "family" %}
+      <div class="detail-item">
+        <span>DNI familiar</span>
+        <strong>{{ item.family_member_dni or "-" }}</strong>
+      </div>
+
+      <div class="detail-item">
+        <span>Nombre familiar</span>
+        <strong>{{ item.family_member_full_name or "-" }}</strong>
+      </div>
+
+      <div class="detail-item">
+        <span>Parentesco</span>
+        <strong>{{ item.family_relationship or "-" }}</strong>
+      </div>
+    {% endif %}
+
+    <div class="detail-item">
+      <span>Fecha desde</span>
+      <strong>{{ item.start_date or "-" }}</strong>
+    </div>
+
+    <div class="detail-item">
+      <span>Fecha hasta / cierre</span>
+      <strong>
+        {% if item.end_date %}
+          {{ item.end_date }}
+        {% else %}
+          Pendiente de cierre
+        {% endif %}
+      </strong>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel mt-24">
+  <div class="panel-header">
+    <h3>Cambiar estado</h3>
+  </div>
+
+  <form method="post" action="/admin/licenses/{{ item.id }}/status" class="status-form">
+    <label>
+      Estado
+      <select name="status" required>
+        {% for key, label in status_labels.items() %}
+          <option value="{{ key }}" {% if item.status == key %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Observaciones administrativas
+      <textarea name="admin_notes" rows="4">{{ item.admin_notes or "" }}</textarea>
+    </label>
+
+    <p class="muted mt-12">
+      Al guardar el cambio de estado, el sistema notificará automáticamente por WhatsApp a la persona vinculada si tiene teléfono cargado.
+    </p>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Guardar cambio</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

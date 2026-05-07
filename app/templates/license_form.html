@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Nueva solicitud</h2>
+    <p>Carga manual de licencias, carpetas médicas u otras licencias.</p>
+  </div>
+
+  <a class="btn-secondary" href="/admin/licenses">Volver</a>
+</section>
+
+<form method="post" action="/admin/licenses/new" class="form-card">
+  <section class="form-section">
+    <h3>Datos de la persona</h3>
+
+    <div class="form-grid">
+      <label>
+        Nombre
+        <input type="text" name="first_name" required>
+      </label>
+
+      <label>
+        Apellido
+        <input type="text" name="last_name" required>
+      </label>
+
+      <label>
+        DNI
+        <input type="text" name="dni" required>
+      </label>
+
+      <label>
+        Teléfono
+        <input type="text" name="phone">
+      </label>
+
+      <label>
+        Email
+        <input type="email" name="email">
+      </label>
+
+      <label>
+        Área / Dependencia
+        <input type="text" name="department">
+      </label>
+
+      <label>
+        Legajo
+        <input type="text" name="employee_number">
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h3>Datos de la solicitud</h3>
+
+    <div class="form-grid">
+      <label>
+        Tipo de solicitud
+        <select name="request_type" required>
+          <option value="license">Licencia</option>
+          <option value="medical_folder">Carpeta Médica</option>
+          <option value="other_license">Otra Licencia</option>
+        </select>
+      </label>
+
+      <label>
+        Desde
+        <input type="date" name="start_date" required>
+      </label>
+
+      <label>
+        Hasta
+        <input type="date" name="end_date" required>
+      </label>
+    </div>
+
+    <label>
+      Motivo
+      <textarea name="reason" rows="4"></textarea>
+    </label>
+
+    <label>
+      Observaciones administrativas
+      <textarea name="admin_notes" rows="4"></textarea>
+    </label>
+  </section>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">Guardar solicitud</button>
+    <a href="/admin/licenses" class="btn-secondary">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

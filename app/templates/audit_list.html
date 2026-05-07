@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h2>Auditoría</h2>
+    <p>Registro de acciones importantes realizadas en el sistema.</p>
+  </div>
+
+  <div class="header-actions">
+    <a
+      class="btn-secondary"
+      href="/admin/audit/export.csv?action={{ selected_action }}&entity_type={{ selected_entity_type }}&user_email={{ user_email }}&date_from={{ date_from }}&date_to={{ date_to }}"
+    >
+      Exportar CSV
+    </a>
+  </div>
+</section>
+
+<form method="get" action="/admin/audit" class="audit-filter-card">
+  <div class="audit-filter-grid">
+    <label>
+      Acción
+      <select name="action">
+        <option value="">Todas las acciones</option>
+        {% for item in actions %}
+          <option value="{{ item.value }}" {% if selected_action == item.value %}selected{% endif %}>
+            {{ item.label }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Entidad
+      <select name="entity_type">
+        <option value="">Todas las entidades</option>
+        {% for item in entity_types %}
+          <option value="{{ item.value }}" {% if selected_entity_type == item.value %}selected{% endif %}>
+            {{ item.label }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Usuario
+      <input
+        type="text"
+        name="user_email"
+        placeholder="Email del usuario..."
+        value="{{ user_email }}"
+      >
+    </label>
+
+    <label>
+      Desde
+      <input type="date" name="date_from" value="{{ date_from }}">
+    </label>
+
+    <label>
+      Hasta
+      <input type="date" name="date_to" value="{{ date_to }}">
+    </label>
+  </div>
+
+  <div class="audit-filter-actions">
+    <button type="submit" class="btn-primary">Filtrar</button>
+    <a href="/admin/audit" class="btn-secondary">Limpiar</a>
+  </div>
+</form>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h3>Últimos registros</h3>
+      <span class="muted">
+        {{ total_items }} registro/s · Página {{ page }} de {{ total_pages }}
+      </span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Acción</th>
+        <th>Entidad</th>
+        <th>ID</th>
+        <th>Detalle</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for item in logs %}
+      <tr>
+        <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else "-" }}</td>
+
+        <td>
+          {% if item.user_email %}
+            {{ item.user_email }}
+          {% else %}
+            Sistema/API
+          {% endif %}
+        </td>
+
+        <td>{{ item.user_role or "-" }}</td>
+
+        <td>
+          <span class="badge">{{ item.action_label }}</span>
+        </td>
+
+        <td>{{ item.entity_type_label }}</td>
+
+        <td>
+          {% if item.entity_id %}
+            #{{ item.entity_id }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td class="audit-description-short">
+          {{ item.description_preview or "-" }}
+        </td>
+
+        <td>
+          <a class="mini-link" href="/admin/audit/{{ item.id }}">Ver detalle</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="empty">
+          No hay registros de auditoría.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if total_pages > 1 %}
+  <section class="pagination">
+    {% if page > 1 %}
+      <a
+        class="btn-secondary"
+        href="/admin/audit?page={{ page - 1 }}&action={{ selected_action }}&entity_type={{ selected_entity_type }}&user_email={{ user_email }}&date_from={{ date_from }}&date_to={{ date_to }}"
+      >
+        Anterior
+      </a>
+    {% endif %}
+
+    <span>Página {{ page }} de {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a
+        class="btn-secondary"
+        href="/admin/audit?page={{ page + 1 }}&action={{ selected_action }}&entity_type={{ selected_entity_type }}&user_email={{ user_email }}&date_from={{ date_from }}&date_to={{ date_to }}"
+      >
+        Siguiente
+      </a>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}
