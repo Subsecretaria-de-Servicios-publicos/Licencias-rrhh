@@ -1,9 +1,13 @@
+import mimetypes
+import os
+import uuid
 import csv
 import io
+from pathlib import Path
 from datetime import date, datetime, timezone
 from math import ceil
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Request, File, UploadFile
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
@@ -22,7 +26,11 @@ from app.auth import (
 from app.db import get_db
 from app.models import Conversation, LicenseRequest, Message, Person, User
 from app.services.audit_service import create_audit_log
-from app.services.evolution_service import send_whatsapp_text
+from app.services.evolution_service import (
+    get_public_base_url,
+    send_whatsapp_media,
+    send_whatsapp_text,
+)
 from app.services.notification_service import notify_license_status_by_whatsapp
 from app.services.person_service import create_or_update_person, normalize_phone
 
@@ -1071,10 +1079,107 @@ def resume_assistant(
     )
 
 
-@router.post("/admin/messages/{conversation_id}/reply")
-def human_reply(
+UPLOAD_MESSAGES_DIR = Path("app/static/uploads/messages")
+
+MAX_MESSAGE_ATTACHMENT_SIZE = 12 * 1024 * 1024
+
+ALLOWED_MESSAGE_ATTACHMENT_EXTENSIONS = {
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".txt",
+}
+
+
+def _safe_filename(filename: str | None) -> str:
+    raw = filename or "archivo"
+    raw = raw.replace("\\", "_").replace("/", "_").strip()
+
+    if not raw:
+        raw = "archivo"
+
+    return raw
+
+
+def _detect_attachment_kind(mime_type: str | None, filename: str | None = None) -> str:
+    mime = mime_type or ""
+
+    if not mime and filename:
+        guessed, _ = mimetypes.guess_type(filename)
+        mime = guessed or ""
+
+    if mime.startswith("image/"):
+        return "image"
+
+    if mime.startswith("video/"):
+        return "video"
+
+    if mime.startswith("audio/"):
+        return "audio"
+
+    return "document"
+
+
+async def _save_message_attachment(
     conversation_id: int,
-    content: str = Form(...),
+    attachment: UploadFile | None,
+) -> dict | None:
+    if not attachment or not attachment.filename:
+        return None
+
+    original_name = _safe_filename(attachment.filename)
+    extension = Path(original_name).suffix.lower()
+
+    if extension not in ALLOWED_MESSAGE_ATTACHMENT_EXTENSIONS:
+        raise ValueError(
+            "Tipo de archivo no permitido. Permitidos: PDF, imágenes, Word, Excel y TXT."
+        )
+
+    content = await attachment.read()
+
+    if len(content) > MAX_MESSAGE_ATTACHMENT_SIZE:
+        raise ValueError("El archivo supera el tamaño máximo permitido de 12 MB.")
+
+    mime_type = attachment.content_type or mimetypes.guess_type(original_name)[0] or "application/octet-stream"
+
+    target_dir = UPLOAD_MESSAGES_DIR / str(conversation_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_name = f"{uuid.uuid4().hex}{extension}"
+    stored_path = target_dir / stored_name
+
+    stored_path.write_bytes(content)
+
+    relative_path = f"/static/uploads/messages/{conversation_id}/{stored_name}"
+
+    return {
+        "original_name": original_name,
+        "relative_path": relative_path,
+        "mime_type": mime_type,
+        "kind": _detect_attachment_kind(mime_type, original_name),
+    }
+
+
+def _build_public_file_url(relative_path: str) -> str:
+    base_url = get_public_base_url()
+
+    if not base_url:
+        return relative_path
+
+    return f"{base_url.rstrip('/')}{relative_path}"
+
+
+@router.post("/admin/messages/{conversation_id}/reply")
+async def human_reply(
+    conversation_id: int,
+    content: str | None = Form(None),
+    attachment: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
@@ -1092,18 +1197,48 @@ def human_reply(
     if not conversation:
         return RedirectResponse(url="/admin/messages", status_code=303)
 
-    clean_content = content.strip()
+    clean_content = (content or "").strip()
 
-    if not clean_content:
+    attachment_data = None
+
+    try:
+        attachment_data = await _save_message_attachment(
+            conversation_id=conversation.id,
+            attachment=attachment,
+        )
+    except ValueError as exc:
+        system_message = Message(
+            conversation_id=conversation.id,
+            sender_type="system",
+            content=f"No se pudo adjuntar el archivo. {exc}",
+        )
+        db.add(system_message)
+        db.commit()
+
         return RedirectResponse(
             url=f"/admin/messages?conversation_id={conversation_id}",
             status_code=303,
         )
 
+    if not clean_content and not attachment_data:
+        return RedirectResponse(
+            url=f"/admin/messages?conversation_id={conversation_id}",
+            status_code=303,
+        )
+
+    human_content = clean_content
+
+    if attachment_data and not human_content:
+        human_content = f"Archivo adjunto: {attachment_data['original_name']}"
+
     human_message = Message(
         conversation_id=conversation.id,
         sender_type="human",
-        content=clean_content,
+        content=human_content,
+        attachment_name=attachment_data["original_name"] if attachment_data else None,
+        attachment_path=attachment_data["relative_path"] if attachment_data else None,
+        attachment_mime_type=attachment_data["mime_type"] if attachment_data else None,
+        attachment_kind=attachment_data["kind"] if attachment_data else None,
     )
     db.add(human_message)
 
@@ -1111,11 +1246,24 @@ def human_reply(
     conversation.pause_reason = "Respondido por operador humano"
     conversation.admin_last_read_at = datetime.now(timezone.utc)
 
+    send_result = None
+
     if conversation.channel == "whatsapp" and conversation.external_contact:
-        send_result = send_whatsapp_text(
-            conversation.external_contact,
-            clean_content,
-        )
+        if attachment_data:
+            public_file_url = _build_public_file_url(attachment_data["relative_path"])
+
+            send_result = send_whatsapp_media(
+                phone=conversation.external_contact,
+                media_url=public_file_url,
+                filename=attachment_data["original_name"],
+                mime_type=attachment_data["mime_type"],
+                caption=clean_content or "",
+            )
+        else:
+            send_result = send_whatsapp_text(
+                conversation.external_contact,
+                clean_content,
+            )
 
         print("HUMAN_REPLY_SEND_RESULT:", send_result)
 
@@ -1153,7 +1301,9 @@ def human_reply(
         description=(
             f"Respuesta humana enviada/registrada. "
             f"Canal={conversation.channel}, contacto={conversation.external_contact}, "
-            f"contenido={clean_content[:250]}."
+            f"contenido={clean_content[:250]}, "
+            f"adjunto={attachment_data['original_name'] if attachment_data else None}, "
+            f"resultado={send_result}."
         ),
     )
 

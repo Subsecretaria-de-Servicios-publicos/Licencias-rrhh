@@ -1,328 +1,291 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header wa-page-header">
+<section class="page-header">
   <div>
     <h2>Mensajes</h2>
     <p>Conversaciones recibidas, solicitudes y estado del asistente.</p>
   </div>
 </section>
 
-<section class="wa-layout">
-  <aside class="wa-sidebar">
-    <div class="wa-sidebar-header">
-      <h3>Conversaciones</h3>
-      <span>{{ conversations|length }} conversación/es</span>
+<section class="messages-layout">
+  <aside class="conversations-panel">
+    <div class="panel-header">
+      <div>
+        <h3>Conversaciones</h3>
+        <span class="muted">{{ conversations|length }} conversación/es</span>
+      </div>
     </div>
 
-    <div class="wa-conversation-list">
-      {% for item in conversations %}
+    <div class="conversation-list">
+      {% for conversation in conversations %}
+        {% set is_selected = selected_conversation and selected_conversation.id == conversation.id %}
+        {% set person = conversation.person %}
+
         <a
-          href="/admin/messages?conversation_id={{ item.id }}"
-          class="wa-conversation {% if selected_conversation and selected_conversation.id == item.id %}active{% endif %} {% if item.unread_count and item.unread_count > 0 %}unread{% endif %}"
+          href="/admin/messages?conversation_id={{ conversation.id }}"
+          class="conversation-card {% if is_selected %}active{% endif %}"
         >
-          <div class="wa-avatar">
-            {% if item.person %}
-              {{ item.person.first_name[:1] }}{{ item.person.last_name[:1] if item.person.last_name else '' }}
+          <div class="conversation-avatar">
+            {% if person %}
+              {{ person.first_name[:1] if person.first_name else "P" }}{{ person.last_name[:1] if person.last_name else "" }}
             {% else %}
-              ??
+              ?
             {% endif %}
           </div>
 
-          <div class="wa-conversation-content">
-            <div class="wa-conversation-top">
+          <div class="conversation-content">
+            <div class="conversation-title-row">
               <strong>
-                {% if item.person %}
-                  {{ item.person.first_name }} {{ item.person.last_name }}
+                {% if person %}
+                  {% if person.full_name %}
+                    {{ person.full_name }}
+                  {% else %}
+                    {{ person.first_name }} {{ person.last_name }}
+                  {% endif %}
                 {% else %}
-                  Sin persona
+                  {{ conversation.external_contact or "Sin contacto" }}
                 {% endif %}
               </strong>
 
               <span>
-                {% if item.last_message_at %}
-                  {{ item.last_message_at.strftime('%d/%m %H:%M') }}
-                {% elif item.created_at %}
-                  {{ item.created_at.strftime('%d/%m %H:%M') }}
+                {% if conversation.last_message_at %}
+                  {{ conversation.last_message_at.strftime('%d/%m %H:%M') }}
                 {% endif %}
               </span>
             </div>
 
-            <div class="wa-conversation-sub">
-              {{ item.channel }} · {{ item.external_contact }}
-            </div>
+            <small>whatsapp · {{ conversation.external_contact or "-" }}</small>
 
-            <div class="wa-conversation-preview-row">
-              <div class="wa-conversation-preview">
-                {% if item.last_message_preview %}
-                  {{ item.last_message_preview[:65] }}{% if item.last_message_preview|length > 65 %}...{% endif %}
-                {% else %}
-                  Sin mensajes
-                {% endif %}
-              </div>
-
-              {% if item.unread_count and item.unread_count > 0 %}
-                <span class="wa-unread-badge">
-                  {{ item.unread_count }}
-                </span>
-              {% endif %}
-            </div>
+            <p>
+              {{ conversation.last_message_preview or "Sin mensajes recientes" }}
+            </p>
           </div>
+
+          {% if conversation.unread_count and conversation.unread_count > 0 %}
+            <span class="unread-count">{{ conversation.unread_count }}</span>
+          {% endif %}
         </a>
       {% else %}
-        <div class="wa-empty">
-          No hay conversaciones registradas.
-        </div>
+        <div class="empty">No hay conversaciones recibidas.</div>
       {% endfor %}
     </div>
   </aside>
 
-  <main class="wa-main">
+  <section class="message-detail-panel">
     {% if selected_conversation %}
-      <header class="wa-chat-header">
-        <div class="wa-header-left">
-          <div class="wa-avatar big">
-            {% if selected_conversation.person %}
-              {{ selected_conversation.person.first_name[:1] }}{{ selected_conversation.person.last_name[:1] if selected_conversation.person.last_name else '' }}
+      {% set person = selected_conversation.person %}
+
+      <article class="conversation-header-card">
+        <div class="conversation-person">
+          <div class="conversation-avatar big">
+            {% if person %}
+              {{ person.first_name[:1] if person.first_name else "P" }}{{ person.last_name[:1] if person.last_name else "" }}
             {% else %}
-              ??
+              ?
             {% endif %}
           </div>
 
           <div>
             <h3>
-              {% if selected_conversation.person %}
-                {{ selected_conversation.person.first_name }} {{ selected_conversation.person.last_name }}
+              {% if person %}
+                {% if person.full_name %}
+                  {{ person.full_name }}
+                {% else %}
+                  {{ person.first_name }} {{ person.last_name }}
+                {% endif %}
               {% else %}
-                Sin persona vinculada
+                {{ selected_conversation.external_contact or "Contacto sin identificar" }}
               {% endif %}
             </h3>
 
             <p>
-              {{ selected_conversation.channel }} · {{ selected_conversation.external_contact }}
-              {% if selected_conversation.person %}
-                · DNI {{ selected_conversation.person.dni or "-" }}
+              whatsapp · {{ selected_conversation.external_contact or "-" }}
+              {% if person and person.dni %}
+                · DNI {{ person.dni }}
               {% endif %}
             </p>
           </div>
         </div>
 
-        <div class="wa-header-actions">
+        <div class="conversation-actions">
           {% if selected_conversation.assistant_paused %}
-            <span class="wa-status paused">Asistente pausado</span>
+            <span class="status status-rejected">Asistente pausado</span>
 
             <form method="post" action="/admin/messages/{{ selected_conversation.id }}/resume">
-              <button type="submit" class="wa-btn primary">Reanudar</button>
+              <button type="submit" class="btn-primary">Reanudar</button>
             </form>
           {% else %}
-            <span class="wa-status active">Asistente activo</span>
+            <span class="status status-approved">Asistente activo</span>
 
             <form method="post" action="/admin/messages/{{ selected_conversation.id }}/pause">
-              <input type="hidden" name="pause_reason" value="Pausado desde panel de mensajes">
-              <button type="submit" class="wa-btn danger">Pausar</button>
+              <button type="submit" class="btn-danger">Pausar</button>
             </form>
           {% endif %}
 
-          {% if selected_conversation.person and can_manage_persons %}
-            <a href="/admin/persons/{{ selected_conversation.person.id }}" class="wa-btn secondary">
-              Editar persona
-            </a>
+          {% if person %}
+            <a class="btn-secondary" href="/admin/persons/{{ person.id }}">Editar persona</a>
+            <a class="btn-secondary" href="/admin/licenses?person_id={{ person.id }}">Ver solicitudes</a>
           {% endif %}
+
+          <a class="btn-primary" href="/admin/licenses/new">Nueva solicitud</a>
         </div>
-      </header>
+      </article>
 
-      <section class="wa-person-requests-card">
-        <div class="wa-section-head">
-          <div>
-            <h3>Solicitudes de la persona</h3>
-            <p>
-              {{ person_requests|length }} solicitud/es vinculada/s.
-              Al cambiar el estado, se notificará por WhatsApp.
-            </p>
-          </div>
+      {% if selected_conversation.assistant_paused and selected_conversation.pause_reason %}
+        <section class="assistant-pause-alert">
+          <strong>Motivo de pausa:</strong> {{ selected_conversation.pause_reason }}
+        </section>
+      {% endif %}
 
-          {% if can_manage_licenses %}
-            <a class="wa-btn secondary" href="/admin/licenses/new">
-              Nueva solicitud
-            </a>
-          {% endif %}
+      <article class="messages-chat-panel">
+        <div class="panel-header">
+          <h3>Mensajes</h3>
         </div>
 
-        <div class="wa-requests-list">
-          {% for req in person_requests %}
-            <article class="wa-request-item">
-              <div class="wa-request-main">
-                <div class="wa-request-title">
-                  <a href="/admin/licenses/{{ req.id }}">
-                    Solicitud #{{ req.id }}
-                  </a>
+        <div class="messages-thread" id="messagesThread">
+          {% for message in messages %}
+            <div class="message-line message-{{ message.sender_type }}">
+              <div class="message-bubble">
+                <div class="message-meta">
+                  <strong>
+                    {% if message.sender_type == "user" %}
+                      Usuario
+                    {% elif message.sender_type == "assistant" %}
+                      Asistente
+                    {% elif message.sender_type == "human" %}
+                      Operador
+                    {% elif message.sender_type == "system" %}
+                      Sistema
+                    {% else %}
+                      {{ message.sender_type }}
+                    {% endif %}
+                  </strong>
 
-                  <span class="badge">
-                    {{ request_type_labels.get(req.request_type, req.request_type) }}
-                  </span>
-
-                  <span class="status status-{{ req.status }}">
-                    {{ status_labels.get(req.status, req.status) }}
-                  </span>
-                </div>
-
-                <div class="wa-request-meta">
-                  <span>Desde: <strong>{{ req.start_date }}</strong></span>
                   <span>
-                    Hasta:
-                    <strong>
-                      {% if display_end_date is defined %}
-                        {{ display_end_date(req) }}
-                      {% elif req.end_date %}
-                        {{ req.end_date }}
-                      {% else %}
-                        Pendiente de cierre
-                      {% endif %}
-                    </strong>
+                    {{ message.created_at.strftime('%d/%m/%Y %H:%M') if message.created_at else "" }}
                   </span>
-                  <span>Creada: <strong>{{ req.created_at.strftime('%d/%m/%Y %H:%M') if req.created_at else '-' }}</strong></span>
                 </div>
 
-                <div class="wa-request-reason">
-                  {{ req.reason or "Sin motivo cargado." }}
+                <div class="message-text">
+                    {{ message.content }}
 
-                  {% if req.request_type == "medical_folder" %}
-                    <div class="medical-folder-extra compact">
-                      {% if req.medical_folder_for == "family" %}
-                        <strong>Por:</strong> Familiar enfermo ·
-                        <strong>DNI familiar:</strong> {{ req.family_member_dni or "-" }} ·
-                        <strong>Familiar:</strong> {{ req.family_member_full_name or "-" }} ·
-                        <strong>Parentesco:</strong> {{ req.family_relationship or "-" }}
-                      {% elif req.medical_folder_for == "agent" %}
-                        <strong>Por:</strong> Agente
-                      {% else %}
-                        <strong>Por:</strong> Sin definir
-                      {% endif %}
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-
-              <div class="wa-request-actions">
-                {% if can_manage_licenses %}
-                  <a
-                    href="/admin/licenses/{{ req.id }}/edit?return_to=/admin/messages?conversation_id={{ selected_conversation.id }}"
-                    class="wa-mini-link"
-                  >
-                    Editar
-                  </a>
-                {% endif %}
-
-                {% if can_change_license_status %}
-                  <form method="post" action="/admin/messages/{{ selected_conversation.id }}/requests/{{ req.id }}/status">
-                    <input type="hidden" name="status" value="approved">
-                    <button type="submit" class="wa-mini-btn success">Aprobar</button>
-                  </form>
-
-                  <form method="post" action="/admin/messages/{{ selected_conversation.id }}/requests/{{ req.id }}/status">
-                    <input type="hidden" name="status" value="observed">
-                    <button type="submit" class="wa-mini-btn warning">Observar</button>
-                  </form>
-
-                  <form method="post" action="/admin/messages/{{ selected_conversation.id }}/requests/{{ req.id }}/status">
-                    <input type="hidden" name="status" value="rejected">
-                    <button type="submit" class="wa-mini-btn danger">Rechazar</button>
-                  </form>
-                {% endif %}
-              </div>
-            </article>
-          {% else %}
-            <div class="wa-empty">
-              Esta persona todavía no tiene solicitudes registradas.
-            </div>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="wa-chat-card">
-        <div class="wa-chat-title">Mensajes</div>
-
-        <div class="wa-thread" id="wa-thread">
-          {% for msg in messages %}
-            <div class="wa-msg-row {% if msg.sender_type == 'system' %}center{% elif msg.sender_type in ['assistant', 'human'] %}right{% else %}left{% endif %}">
-              <div class="wa-msg {{ msg.sender_type }}">
-                <div class="wa-msg-meta">
-                  <span>{{ msg.sender_type }}</span>
-                  <small>{{ msg.created_at.strftime('%d/%m/%Y %H:%M') if msg.created_at else '' }}</small>
-                </div>
-
-                <div class="wa-msg-text">
-                  {{ msg.content }}
+                    {% if message.attachment_path %}
+                        <div class="message-attachment">
+                        {% if message.attachment_kind == "image" %}
+                            <a href="{{ message.attachment_path }}" target="_blank">
+                            <img src="{{ message.attachment_path }}" alt="{{ message.attachment_name or 'Imagen adjunta' }}">
+                            </a>
+                        {% else %}
+                            <a href="{{ message.attachment_path }}" target="_blank" class="attachment-link">
+                            📎 {{ message.attachment_name or "Archivo adjunto" }}
+                            </a>
+                        {% endif %}
+                        </div>
+                    {% endif %}
                 </div>
               </div>
             </div>
           {% else %}
-            <div class="wa-empty">
-              No hay mensajes cargados.
-            </div>
+            <div class="empty">Todavía no hay mensajes en esta conversación.</div>
           {% endfor %}
         </div>
-      </section>
+      </article>
 
-      <section class="wa-reply-card">
-        <form method="post" action="/admin/messages/{{ selected_conversation.id }}/reply" class="wa-reply-form">
-          <textarea
-            name="content"
-            placeholder="Escribí una respuesta humana..."
-            required
-          ></textarea>
+      <article class="human-reply-panel">
+        <form
+            method="post"
+            action="/admin/messages/{{ selected_conversation.id }}/reply"
+            class="human-reply-form chat-input-form"
+            enctype="multipart/form-data"
+        >
+            <div class="chat-input-box">
+            <label
+                class="chat-icon-btn"
+                title="Adjuntar archivo"
+                aria-label="Adjuntar archivo"
+                >
+                📎
+                <input
+                    type="file"
+                    name="attachment"
+                    id="messageAttachmentInput"
+                    class="hidden-file-input"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt"
+                >
+            </label>
 
-          <div class="wa-reply-actions">
-            <button type="submit" class="wa-btn primary">Enviar respuesta humana</button>
+            <textarea
+                name="content"
+                rows="1"
+                placeholder="Escribí una respuesta humana..."
+            ></textarea>
 
-            {% if selected_conversation.assistant_paused %}
-              <span>El asistente está pausado.</span>
-            {% else %}
-              <span>Al responder, el asistente quedará pausado.</span>
-            {% endif %}
-          </div>
+            <button
+                type="submit"
+                class="chat-send-btn"
+                title="Enviar respuesta humana"
+                aria-label="Enviar respuesta humana"
+            >
+                ➤
+            </button>
+            </div>
+
+            <div class="chat-input-help">
+            <div class="chat-input-help" id="attachmentHelp">
+                Al responder, el asistente quedará pausado. Podés adjuntar PDF, imagen, Word, Excel o TXT.
+            </div>
+            </div>
         </form>
-      </section>
+        </article>
     {% else %}
-      <div class="wa-empty big">
-        No hay conversaciones para mostrar.
-      </div>
+      <article class="panel">
+        <div class="empty">Seleccioná una conversación.</div>
+      </article>
     {% endif %}
-  </main>
+  </section>
 </section>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const thread = document.getElementById("wa-thread");
+  (function () {
+    const thread = document.getElementById("messagesThread");
+
     if (thread) {
       thread.scrollTop = thread.scrollHeight;
     }
-  });
-</script>
 
-<script>
-(function () {
-    const REFRESH_MS = 6000;
+    let userIsTyping = false;
+    const textarea = document.querySelector(".human-reply-form textarea");
 
-    function shouldSkipRefresh() {
-        const textarea = document.querySelector('textarea[name="content"]')
-            || document.querySelector('textarea[name="human_message"]')
-            || document.querySelector('textarea');
+    if (textarea) {
+      textarea.addEventListener("focus", function () {
+        userIsTyping = true;
+      });
 
-        if (!textarea) return false;
-
-        const isFocused = document.activeElement === textarea;
-        const hasText = textarea.value && textarea.value.trim().length > 0;
-
-        return isFocused || hasText;
+      textarea.addEventListener("blur", function () {
+        userIsTyping = false;
+      });
     }
 
-    setInterval(() => {
-        if (document.hidden) return;
-        if (shouldSkipRefresh()) return;
+    setInterval(function () {
+      if (!userIsTyping && !document.hidden) {
+        window.location.reload();
+      }
+    }, 20000);
 
-        window.location.href = window.location.pathname + window.location.search;
-    }, REFRESH_MS);
-})();
+    const attachmentInput = document.getElementById("messageAttachmentInput");
+const attachmentHelp = document.getElementById("attachmentHelp");
+
+if (attachmentInput && attachmentHelp) {
+  attachmentInput.addEventListener("change", function () {
+    if (attachmentInput.files && attachmentInput.files.length > 0) {
+      attachmentHelp.textContent = "Adjunto seleccionado: " + attachmentInput.files[0].name;
+    } else {
+      attachmentHelp.textContent = "Al responder, el asistente quedará pausado. Podés adjuntar PDF, imagen, Word, Excel o TXT.";
+    }
+  });
+}
+  })();
+
 </script>
 {% endblock %}

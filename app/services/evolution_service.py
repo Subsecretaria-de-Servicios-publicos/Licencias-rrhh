@@ -1,5 +1,6 @@
+import mimetypes
 import os
-
+import requests
 import httpx
 from dotenv import load_dotenv
 
@@ -8,7 +9,116 @@ load_dotenv()
 EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "").rstrip("/")
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "")
+PUBLIC_WEBHOOK_URL = os.getenv("PUBLIC_WEBHOOK_URL", "")
 
+def get_public_base_url() -> str:
+    """
+    Usa PUBLIC_WEBHOOK_URL para calcular la URL pública base del sistema.
+
+    Ejemplo:
+    PUBLIC_WEBHOOK_URL=https://licrrhh.salta.gob.ar/api/evolution/webhook
+
+    Devuelve:
+    https://licrrhh.salta.gob.ar
+    """
+    value = (PUBLIC_WEBHOOK_URL or "").strip()
+
+    if value.endswith("/api/evolution/webhook"):
+        return value.replace("/api/evolution/webhook", "")
+
+    return value.rstrip("/")
+
+
+def detect_media_type(mime_type: str | None, filename: str | None = None) -> str:
+    mime = mime_type or ""
+
+    if not mime and filename:
+        guessed, _ = mimetypes.guess_type(filename)
+        mime = guessed or ""
+
+    if mime.startswith("image/"):
+        return "image"
+
+    if mime.startswith("video/"):
+        return "video"
+
+    if mime.startswith("audio/"):
+        return "audio"
+
+    return "document"
+
+
+def send_whatsapp_media(
+    phone: str,
+    media_url: str,
+    filename: str,
+    mime_type: str | None = None,
+    caption: str | None = None,
+) -> dict:
+    """
+    Envía archivo por Evolution API usando URL pública.
+
+    Requiere que media_url sea accesible públicamente desde internet.
+    """
+    if not EVOLUTION_API_URL or not EVOLUTION_API_KEY or not EVOLUTION_INSTANCE:
+        return {
+            "ok": False,
+            "error": "Faltan variables de entorno de Evolution API",
+        }
+
+    clean_phone = str(phone or "").replace("+", "").replace(" ", "").strip()
+
+    if not clean_phone:
+        return {
+            "ok": False,
+            "error": "Teléfono vacío",
+        }
+
+    mime = mime_type or mimetypes.guess_type(filename or "")[0] or "application/octet-stream"
+    media_type = detect_media_type(mime, filename)
+
+    url = f"{EVOLUTION_API_URL}/message/sendMedia/{EVOLUTION_INSTANCE}"
+
+    payload = {
+        "number": clean_phone,
+        "mediatype": media_type,
+        "mimetype": mime,
+        "caption": caption or "",
+        "media": media_url,
+        "fileName": filename or "archivo",
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "apikey": EVOLUTION_API_KEY,
+    }
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=60,
+        )
+
+        try:
+            data = response.json()
+        except Exception:
+            data = response.text
+
+        return {
+            "ok": response.status_code in {200, 201},
+            "status_code": response.status_code,
+            "data": data,
+            "payload": payload,
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+            "payload": payload,
+        }
 
 def normalize_whatsapp_number(number: str) -> str:
     value = number.strip()
