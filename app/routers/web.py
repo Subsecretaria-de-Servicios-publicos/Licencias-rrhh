@@ -9,7 +9,6 @@ from math import ceil
 
 from fastapi import APIRouter, Depends, Form, Request, File, UploadFile
 from fastapi.responses import RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -35,8 +34,9 @@ from app.services.notification_service import notify_license_status_by_whatsapp
 from app.services.person_service import create_or_update_person, normalize_phone
 
 
+from app.jinja import templates
+
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 REQUEST_TYPE_LABELS = {

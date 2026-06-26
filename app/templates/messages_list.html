@@ -50,7 +50,7 @@
 
               <span>
                 {% if conversation.last_message_at %}
-                  {{ conversation.last_message_at.strftime('%d/%m %H:%M') }}
+                  {{ conversation.last_message_at | localtime('%d/%m %H:%M') }}
                 {% endif %}
               </span>
             </div>
@@ -163,7 +163,7 @@
                   </strong>
 
                   <span>
-                    {{ message.created_at.strftime('%d/%m/%Y %H:%M') if message.created_at else "" }}
+                    {{ message.created_at | localtime if message.created_at else "" }}
                   </span>
                 </div>
 

@@ -21,7 +21,7 @@
     <div class="detail-list">
       <div>
         <span>Fecha</span>
-        <strong>{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else "-" }}</strong>
+        <strong>{{ item.created_at | localtime('%d/%m/%Y %H:%M:%S') }}</strong>
       </div>
 
       <div>

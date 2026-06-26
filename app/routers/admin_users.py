@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth import can_manage_users, get_current_user
@@ -8,8 +7,9 @@ from app.db import get_db
 from app.models import User
 from app.services.security_service import hash_password
 
+from app.jinja import templates
+
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 ROLES = {

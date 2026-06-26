@@ -8,7 +8,6 @@ from math import ceil
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth import (
@@ -23,8 +22,9 @@ from app.auth import (
 from app.db import get_db
 from app.models import AuditLog, User
 
+from app.jinja import templates
+
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 PAGE_SIZE = 20
 

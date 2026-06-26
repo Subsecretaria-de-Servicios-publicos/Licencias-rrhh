@@ -97,7 +97,7 @@
     <tbody>
       {% for item in logs %}
       <tr>
-        <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else "-" }}</td>
+        <td>{{ item.created_at | localtime('%d/%m/%Y %H:%M:%S') }}</td>
 
         <td>
           {% if item.user_email %}

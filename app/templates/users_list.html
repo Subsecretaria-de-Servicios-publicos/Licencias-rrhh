@@ -60,7 +60,7 @@
           {% endif %}
         </td>
 
-        <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M') if item.created_at else "-" }}</td>
+        <td>{{ item.created_at | localtime }}</td>
 
         <td>
           <div class="table-actions">
