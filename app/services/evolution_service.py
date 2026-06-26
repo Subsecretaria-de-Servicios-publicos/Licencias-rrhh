@@ -175,37 +175,30 @@ def send_whatsapp_text(number: str, text: str) -> dict:
 
     clean_number = normalize_whatsapp_number(number)
 
-    payload_v1 = {
-        "number": clean_number,
-        "text": text,
-    }
-
-    result_v1 = _post_send_text(payload_v1)
-
-    if result_v1.get("ok"):
-        return result_v1
-
-    payload_v2 = {
+    # linkPreview:false fuerza tipo "conversation" (texto plano) en lugar de
+    # extendedTextMessage, evitando el "Esperando mensaje" en iOS.
+    # Sin presence/delay para no emitir mensajes de tipeo intermedios.
+    payload = {
         "number": clean_number,
         "options": {
-            "delay": 1200,
-            "presence": "composing",
+            "delay": 0,
+            "presence": "available",
+            "linkPreview": False,
         },
         "textMessage": {
             "text": text,
         },
     }
 
-    result_v2 = _post_send_text(payload_v2)
+    result = _post_send_text(payload)
 
-    if result_v2.get("ok"):
-        return result_v2
+    if result.get("ok"):
+        return result
 
-    return {
-        "ok": False,
-        "error": "No se pudo enviar mensaje con ningún formato compatible",
-        "attempts": {
-            "v1": result_v1,
-            "v2": result_v2,
-        },
+    # Fallback al formato mínimo por si la instancia no acepta el formato anterior.
+    payload_fallback = {
+        "number": clean_number,
+        "text": text,
     }
+
+    return _post_send_text(payload_fallback)
